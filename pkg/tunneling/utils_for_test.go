@@ -3,6 +3,7 @@ package tunneling
 import (
 	"context"
 	"errors"
+	"time"
 )
 
 type SourceMock struct {
@@ -11,22 +12,33 @@ type SourceMock struct {
 	readMsgs                   []string
 	failsConsumeBeforeMessages bool
 	failsConsumeAfterMessages  bool
+	consuming                  bool
+	consumingStopDelayMilliSec int
 }
 
-func NewSourceMock(readMsgs []string, failsConsumeBeforeMessages bool, failsConsumeAfterMessages bool) *SourceMock {
+func NewSourceMock(
+	readMsgs []string,
+	failsConsumeBeforeMessages bool, failsConsumeAfterMessages bool,
+	consumingStopDelayMilliSec int,
+) *SourceMock {
 	return &SourceMock{
 		out:                        make(chan []byte),
 		readMsgs:                   readMsgs,
 		gotMsgs:                    make([]string, 0),
 		failsConsumeBeforeMessages: failsConsumeBeforeMessages,
 		failsConsumeAfterMessages:  failsConsumeAfterMessages,
+		consumingStopDelayMilliSec: consumingStopDelayMilliSec,
 	}
 }
 
-func (s SourceMock) Consume(ctx context.Context) (err error) {
+func (s *SourceMock) Consume(ctx context.Context) (err error) {
 	if s.failsConsumeBeforeMessages {
 		return errors.New("failed before")
 	}
+	s.consuming = true
+	defer func() {
+		s.consuming = false
+	}()
 	for _, msg := range s.readMsgs {
 		s.out <- []byte(msg)
 	}
@@ -34,6 +46,7 @@ func (s SourceMock) Consume(ctx context.Context) (err error) {
 		return errors.New("failed after")
 	}
 	<-ctx.Done()
+	time.Sleep(time.Duration(s.consumingStopDelayMilliSec) * time.Millisecond)
 	return nil
 }
 

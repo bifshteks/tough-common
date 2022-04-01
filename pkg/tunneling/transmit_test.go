@@ -10,13 +10,13 @@ import (
 func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 	cases := [][3]*SourceMock{
 		{
-			NewSourceMock([]string{}, false, false),
-			NewSourceMock([]string{"asd", "qwe"}, false, false),
-			NewSourceMock([]string{}, false, false)},
+			NewSourceMock([]string{}, false, false, 0),
+			NewSourceMock([]string{"asd", "qwe"}, false, false, 0),
+			NewSourceMock([]string{}, false, false, 0)},
 		{
-			NewSourceMock([]string{"a"}, false, false),
-			NewSourceMock([]string{"b"}, false, false),
-			NewSourceMock([]string{"c"}, false, false),
+			NewSourceMock([]string{"a"}, false, false, 0),
+			NewSourceMock([]string{"b"}, false, false, 0),
+			NewSourceMock([]string{"c"}, false, false, 0),
 		},
 	}
 	for _, sources := range cases {
@@ -50,7 +50,7 @@ func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 }
 
 func TestTransmitterStopsWhenCannotStartSource(t *testing.T) {
-	s := NewSourceMock([]string{}, true, false)
+	s := NewSourceMock([]string{}, true, false, 0)
 	trans := NewTransmitter()
 	trans.AddSources(s)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -66,8 +66,8 @@ func TestTransmitterStopsWhenCannotStartSource(t *testing.T) {
 }
 
 func TestTransmitterCanAddSourcesWhileRunning(t *testing.T) {
-	s1 := NewSourceMock([]string{}, false, false)
-	s2 := NewSourceMock([]string{"asd"}, false, false)
+	s1 := NewSourceMock([]string{}, false, false, 0)
+	s2 := NewSourceMock([]string{"asd"}, false, false, 0)
 	trans := NewTransmitter()
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -100,5 +100,23 @@ func TestTransmitterStopsAfterContextCancel(t *testing.T) {
 	time.Sleep(time.Millisecond) // let trans release and close things
 	if !stopped {
 		t.Errorf("trans did not stop after context canelation")
+	}
+}
+
+func TestTransmitterRunEndsAfterSourcesStopConsuming(t *testing.T) {
+	stopDelay := 100
+	s := NewSourceMock([]string{}, false, false, stopDelay)
+	trans := NewTransmitter()
+	ctx, cancel := context.WithCancel(context.Background())
+	trans.AddSources(s)
+
+	go func() {
+		time.Sleep(2 * time.Millisecond) // wait for trans to start
+		cancel()
+	}()
+	trans.Run(ctx, cancel)
+
+	if s.consuming {
+		t.Errorf("source still consuming after trans.Run() ends")
 	}
 }
