@@ -2,7 +2,6 @@ package tunneling
 
 import (
 	"context"
-	"log"
 	"reflect"
 	"testing"
 	"time"
@@ -90,7 +89,6 @@ func TestTransmitterStopsAfterContextCancel(t *testing.T) {
 
 	go func() {
 		trans.Run(ctx, cancel)
-		log.Println("after run")
 		stopped = true
 	}()
 
@@ -100,7 +98,6 @@ func TestTransmitterStopsAfterContextCancel(t *testing.T) {
 	}
 	cancel()
 	time.Sleep(time.Millisecond) // let trans release and close things
-	log.Println("after cancel")
 	if !stopped {
 		t.Errorf("trans did not stop after context canelation")
 	}
