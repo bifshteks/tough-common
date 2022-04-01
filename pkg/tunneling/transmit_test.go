@@ -94,6 +94,7 @@ func TestTransmitterStopsAfterContextCancel(t *testing.T) {
 		stopped = true
 	}()
 
+	time.Sleep(3 * time.Millisecond)
 	if stopped {
 		t.Errorf("trans stopped right after start or did not start at all")
 	}
