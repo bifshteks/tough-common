@@ -2,6 +2,7 @@ package tunneling
 
 import (
 	"context"
+	"log"
 	"reflect"
 	"testing"
 	"time"
@@ -29,7 +30,7 @@ func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 			trans.Run(ctx, cancel)
 			testCancel()
 		}()
-		time.Sleep(time.Millisecond) // let transmitter time to transmit
+		time.Sleep(time.Millisecond) // let transmitter time to transmit messages
 		cancel()
 		<-testCtx.Done()
 
@@ -80,4 +81,27 @@ func TestTransmitterCanAddSourcesWhileRunning(t *testing.T) {
 	if !reflect.DeepEqual(s1.gotMsgs, s2.readMsgs) {
 		t.Errorf("transmitter did not send message from added in runtime source")
 	}
+}
+
+func TestTransmitterStopsAfterContextCancel(t *testing.T) {
+	trans := NewTransmitter()
+	ctx, cancel := context.WithCancel(context.Background())
+	stopped := false
+
+	go func() {
+		trans.Run(ctx, cancel)
+		log.Println("after run")
+		stopped = true
+	}()
+
+	if stopped {
+		t.Errorf("trans stopped right after start or did not start at all")
+	}
+	cancel()
+	time.Sleep(time.Millisecond) // let trans release and close things
+	log.Println("after cancel")
+	if !stopped {
+		t.Errorf("trans did not stop after context canelation")
+	}
+
 }
