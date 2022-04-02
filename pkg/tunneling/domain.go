@@ -6,8 +6,8 @@ import (
 )
 
 // ITransmitter is an object that is connected by any number of Sources,
-// that it reads and transmit messages from a sources to any other sources,
-// connected to Transmitter
+// that it reads and transmits messages from a sources to any other sources,
+// connected to ITransmitter
 type ITransmitter interface {
 	Run(ctx context.Context, cancel context.CancelFunc)
 	AddSources(sources ...source.Source)

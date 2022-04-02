@@ -2,7 +2,6 @@ package source
 
 import (
 	"context"
-	"errors"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"time"
@@ -37,13 +36,19 @@ func (ws *WSConn) Consume(ctx context.Context) (err error) {
 	}()
 	for {
 		_, message, err := ws.conn.ReadMessage()
-		if err == nil {
-			ws.reader <- message
-			continue
+		if err != nil {
+			normalClosure := websocket.IsCloseError(err, websocket.CloseNormalClosure)
+			if normalClosure {
+				return nil
+			}
+			return err
 		}
-		// TODO check if error is really an error, not just end of connection
-		return errors.New("Cannot read from ws conn: " + err.Error())
+		ws.reader <- message
 	}
+}
+
+func (ws *WSConn) Write(msg []byte) (err error) {
+	return ws.conn.WriteMessage(ws.msgType, msg)
 }
 
 func (ws *WSConn) Close() {
@@ -59,9 +64,6 @@ func (ws *WSConn) Close() {
 	// waiting (with timeout) for the server to close the connection.
 	<-time.After(time.Second)
 	_ = ws.conn.Close()
+	ws.conn = nil
 	close(ws.reader)
-}
-
-func (ws *WSConn) Write(msg []byte) (err error) {
-	return ws.conn.WriteMessage(ws.msgType, msg)
 }

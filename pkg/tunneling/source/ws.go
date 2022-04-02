@@ -36,30 +36,29 @@ func (ws *WS) GetReader() chan []byte {
 }
 
 func (ws *WS) Connect(ctx context.Context) (err error) {
-	logrus.Debugln("ws.Connect()")
+	logrus.Debugf("ws.Connect() on %s", ws.url)
 	select {
 	case <-ctx.Done():
 		return nil
 	default:
-		c, resp, err := websocket.DefaultDialer.DialContext(ctx, ws.url, ws.requestHeader)
+		conn, resp, err := websocket.DefaultDialer.DialContext(ctx, ws.url, ws.requestHeader)
 		if resp != nil {
-			logrus.Debugln("ws dial response", resp.StatusCode, err)
-			if resp.StatusCode == http.StatusBadRequest || resp.StatusCode == http.StatusUnauthorized {
-				err = errors.New(
+			responseWithKnownBadStatus := resp.StatusCode == http.StatusBadRequest ||
+				resp.StatusCode == http.StatusUnauthorized
+			if responseWithKnownBadStatus {
+				return errors.New(
 					fmt.Sprintf(
 						"ws connection cannot connect to %s, response status is %d",
 						ws.url, resp.StatusCode,
 					),
 				)
-				return NewFatalConnectError(err)
 			}
 		}
 		if err != nil {
-			logrus.Errorln("Cannot connect to ws", ws.url, err)
-			return err
+			return errors.New(fmt.Sprintf("Cannot connect to ws %s: %s", ws.url, err))
 		}
-		ws.conn = c
-		logrus.Infoln("ws connected to", ws.url)
+		ws.conn = conn
+		logrus.Infof("ws connected to %s", ws.url)
 		// cannot set readDeadLine - https://github.com/gorilla/websocket/issues/474,
 		// so use this goroutine
 		go func() {
@@ -70,38 +69,36 @@ func (ws *WS) Connect(ctx context.Context) (err error) {
 	}
 }
 
-// TODO does not stop on ctx cancel!!!!
 func (ws *WS) Consume(ctx context.Context) (err error) {
 	defer logrus.Debugln("ws.Start() ends")
-	logrus.Debugln("ws.Start() call")
+	logrus.Debugf("ws.Start() call %s", ws.url)
 
+	// don't need to catch context done - we already created a goroutine in .Connect() method
+	// waiting for that
 	for {
 		_, message, err := ws.conn.ReadMessage()
 		if err != nil {
-			logrus.Errorln("Could not read from ws:", ws.url, err)
-			return err
+			normalClosure := websocket.IsCloseError(err, websocket.CloseNormalClosure)
+			if normalClosure {
+				return nil
+			}
+			return errors.New(fmt.Sprintf("Cound not read from ws on %s: %s", ws.url, err))
 		}
 		ws.reader <- message
 	}
 }
 
 func (ws *WS) Write(msg []byte) error {
-	err := ws.conn.WriteMessage(ws.msgType, msg)
-	//logging.Logger.Errorln("Cannot write to ws", ws.url, err)
-	return err
+	return ws.conn.WriteMessage(ws.msgType, msg)
 }
 
 func (ws *WS) Close() {
 	defer logrus.Debugln("ws.Close() ends")
-	logrus.Debugln("ws.Close() call")
-	//if ws.conn == nil {
-	// if we closed session before even got the connection
-	//return
-	//}
-	logrus.Warningln("Closing ws: ", ws.url)
+	logrus.Debugf("ws.Close() call for ws on %s", ws.url)
 	err := ws.conn.Close()
 	if err != nil {
-		logrus.Errorln("Could not close ws", ws.url, err)
+		logrus.Errorf("Could not close ws on %s: %s", ws.url, err)
 	}
+	ws.conn = nil
 	close(ws.reader)
 }

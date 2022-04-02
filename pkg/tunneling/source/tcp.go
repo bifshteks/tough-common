@@ -2,6 +2,8 @@ package source
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/sirupsen/logrus"
 	"net"
 	"time"
@@ -30,12 +32,12 @@ func (tcp *TCP) GetReader() chan []byte {
 }
 
 func (tcp *TCP) Connect(ctx context.Context) error {
-	logrus.Debugln("tcp.Connect()")
+	logrus.Debugf("tcp.Connect() on %s", tcp.url)
 	select {
 	case <-ctx.Done():
 		return nil
 	default:
-		logrus.Infoln("Connecting to VNC on", tcp.url)
+		logrus.Infof("Connecting to VNC on %s", tcp.url)
 		conn, err := net.DialTimeout("tcp", tcp.url, 3*time.Second)
 		if err != nil {
 			logrus.Errorln("VNC dial failed:", err)
@@ -46,7 +48,7 @@ func (tcp *TCP) Connect(ctx context.Context) error {
 			panic("cannot convert to tcpConn")
 		}
 		tcp.conn = tcpConn
-		logrus.Infoln("Connected to vnc")
+		logrus.Infof("Connected to vnc on %s", tcp.url)
 		go func() {
 			<-ctx.Done()
 			tcp.Close()
@@ -57,44 +59,30 @@ func (tcp *TCP) Connect(ctx context.Context) error {
 
 func (tcp *TCP) Consume(ctx context.Context) error {
 	defer logrus.Debugln("tcp.Start() ends")
-	if tcp.conn == nil {
-		panic("try to start tcp source before connection is created")
-	}
 	logrus.Debugln("tcp.Start() call")
+
+	// don't need to catch context done - we already created a goroutine in .Connect() method
+	// waiting for that
 	for {
-		select {
-		case <-ctx.Done():
-			logrus.Debugln("tcp.Start() ctx case")
-			return nil
-		default:
-			err := tcp.conn.SetReadDeadline(time.Now().Add(2 * time.Second))
-			if err != nil {
-				panic("cannot set deadline to tcpConn ")
-			}
-			buffer := make([]byte, 1024)
-			n, err := tcp.conn.Read(buffer)
-			if err == nil { // when connection is closed vnc sends 1 byte, dk why
-				tcp.reader <- buffer[:n]
-				continue
-			}
+		buffer := make([]byte, 1024)
+		n, err := tcp.conn.Read(buffer)
+		if err != nil {
 			netErr, ok := err.(net.Error)
-			isTimeout := ok && netErr.Timeout()
-			if isTimeout {
+			temporary := ok && netErr.Temporary()
+			if temporary {
 				continue
 			}
-			logrus.Errorln("Could not read from tcp", err, n, string(buffer), ".", buffer[:10])
-			return err
+			return errors.New(fmt.Sprintf(
+				"Could not read from tcp on %s: %s", tcp.url, err,
+			))
 		}
+		tcp.reader <- buffer[:n]
 	}
 }
 
 func (tcp *TCP) Write(msg []byte) error {
 	_, err := tcp.conn.Write(msg)
-	if err != nil {
-		logrus.Errorln("Cannot write to tcp", err)
-		return err
-	}
-	return nil
+	return err
 }
 
 func (tcp *TCP) Close() {
@@ -103,9 +91,7 @@ func (tcp *TCP) Close() {
 	err := tcp.conn.Close()
 	if err != nil {
 		logrus.Errorln("Could not close connection to tcp:", err)
-		return
 	}
-	// waiting (with timeout) for the server to close the connection.
-	<-time.After(time.Second)
+	tcp.conn = nil
 	close(tcp.reader)
 }

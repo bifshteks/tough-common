@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/sirupsen/logrus"
+	"io"
 	"net"
 	"time"
 )
@@ -25,7 +26,7 @@ func (tcp *TCPConnection) GetReader() chan []byte {
 }
 
 func (tcp *TCPConnection) Consume(ctx context.Context) (err error) {
-	defer logrus.Debugln("gorounting tcpConn.Start() ends")
+	defer logrus.Debugln("tcpConn.Start() ends")
 	logrus.Debugln("start tcpCOn")
 	for {
 		select {
@@ -39,29 +40,30 @@ func (tcp *TCPConnection) Consume(ctx context.Context) (err error) {
 			}
 			buf := make([]byte, 1024)
 			n, err := tcp.conn.Read(buf)
-			if err == nil {
-				message := buf[:n]
-				tcp.reader <- message
-				continue
+			if err != nil {
+				if err == io.EOF {
+					return nil
+				}
+				netErr, ok := err.(net.Error)
+				isTimeout := ok && netErr.Timeout()
+				if isTimeout {
+					continue
+				}
+				return errors.New("Cannot read from tcp connection: " + err.Error())
 			}
-			netErr, ok := err.(net.Error)
-			isTimeout := ok && netErr.Timeout()
-			if isTimeout {
-				continue
-			}
-			// todo check if it's really an error, not just end of connection
-			return errors.New("Cannot read from tcp conn: " + err.Error())
+			message := buf[:n]
+			tcp.reader <- message
 		}
 	}
 }
 
 func (tcp *TCPConnection) Close() {
 	defer logrus.Debugln("tcpConn.Close() ends")
-	if tcp.conn == nil {
-		// if we closed session before even got the connection
-		return
+	err := tcp.conn.Close()
+	if err != nil {
+		logrus.Errorln("Could not close connection to tcpConn:", err)
 	}
-	_ = tcp.conn.Close()
+	tcp.conn = nil
 	close(tcp.reader)
 }
 
