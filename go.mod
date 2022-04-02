@@ -2,4 +2,8 @@ module github.com/bifshteks/tough_common
 
 go 1.16
 
-require golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
+require (
+	github.com/gorilla/websocket v1.5.0 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
+	golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29 // indirect
+)
