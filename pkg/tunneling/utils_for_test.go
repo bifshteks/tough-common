@@ -31,7 +31,7 @@ func NewSourceMock(
 	}
 }
 
-func (s *SourceMock) Consume(ctx context.Context) (err error) {
+func (s *SourceMock) Consume(ctx context.Context, cancel context.CancelFunc) (err error) {
 	if s.failsConsumeBeforeMessages {
 		return errors.New("failed before")
 	}

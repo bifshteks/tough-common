@@ -2,30 +2,31 @@ package tunneling
 
 import (
 	"context"
+	"github.com/bifshteks/tough_common/pkg/tunneling/source"
 	"sync"
 )
 
 type Message struct {
 	content []byte
-	author  Source
+	author  source.Source
 }
 
 type Pool struct {
 	mx      sync.Mutex
-	sources []Source
+	sources []source.Source
 }
 
-func (pool *Pool) All() (sources []Source) {
+func (pool *Pool) All() (sources []source.Source) {
 	return pool.sources
 }
 
-func (pool *Pool) Add(sources ...Source) {
+func (pool *Pool) Add(sources ...source.Source) {
 	pool.mx.Lock()
 	pool.sources = append(pool.sources, sources...)
 	pool.mx.Unlock()
 }
 
-func (pool *Pool) findSourceIndex(source Source) (i int, exists bool) {
+func (pool *Pool) findSourceIndex(source source.Source) (i int, exists bool) {
 	for i, s := range pool.sources {
 		if s == source {
 			return i, true
@@ -34,7 +35,7 @@ func (pool *Pool) findSourceIndex(source Source) (i int, exists bool) {
 	return 0, false
 }
 
-func (pool *Pool) Remove(source Source) {
+func (pool *Pool) Remove(source source.Source) {
 	pool.mx.Lock()
 	i, exists := pool.findSourceIndex(source)
 	if !exists {
@@ -57,13 +58,13 @@ type Transmitter struct {
 func NewTransmitter() *Transmitter {
 	return &Transmitter{
 		pool: &Pool{
-			sources: make([]Source, 0),
+			sources: make([]source.Source, 0),
 		},
 		messagesCh: make(chan Message),
 	}
 }
 
-func (t *Transmitter) processSources(sources ...Source) {
+func (t *Transmitter) processSources(sources ...source.Source) {
 	for _, s := range sources {
 		t.wg.Add(1)
 		go t.read(s)
@@ -86,7 +87,7 @@ func (t *Transmitter) Run(ctx context.Context, cancel context.CancelFunc) {
 	close(t.messagesCh) // after waited for every source to finish - close channel to stop Write goroutine
 }
 
-func (t *Transmitter) AddSources(sources ...Source) {
+func (t *Transmitter) AddSources(sources ...source.Source) {
 	t.pool.Add(sources...)
 	isRunning := t.ctx != nil
 	if !isRunning {
@@ -100,10 +101,10 @@ func (t *Transmitter) AddSources(sources ...Source) {
 	}
 }
 
-func (t *Transmitter) read(source Source) {
+func (t *Transmitter) read(source source.Source) {
 	readCtx, readCancel := context.WithCancel(context.Background())
 	go func() {
-		err := source.Consume(t.ctx)
+		err := source.Consume(t.ctx, t.cancel)
 		if err != nil {
 			t.cancel()
 		}
