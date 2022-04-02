@@ -31,7 +31,7 @@ func NewSourceMock(
 	}
 }
 
-func (s *SourceMock) Consume(ctx context.Context, cancel context.CancelFunc) (err error) {
+func (s *SourceMock) Consume(ctx context.Context) (err error) {
 	if s.failsConsumeBeforeMessages {
 		return errors.New("failed before")
 	}
@@ -57,6 +57,14 @@ func (s SourceMock) GetReader() chan []byte {
 func (s *SourceMock) Write(bytes []byte) (err error) {
 	s.gotMsgs = append(s.gotMsgs, string(bytes))
 	return nil
+}
+
+func (s *SourceMock) Connect(ctx context.Context) error {
+	return nil
+}
+
+func (s *SourceMock) GetUrl() (url string) {
+	return ""
 }
 
 func (s *SourceMock) gotMessage(msg string) bool {

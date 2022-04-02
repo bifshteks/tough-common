@@ -2,38 +2,31 @@ package source
 
 import (
 	"context"
+	"errors"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"time"
 )
 
-type CWS struct { // connection webSocket
+type WSConn struct { // connection webSocket
 	conn    *websocket.Conn
 	reader  chan []byte
 	msgType int
 }
 
-func NewCWS(conn *websocket.Conn, msgType int) *CWS {
-	return &CWS{
+func NewWSConn(conn *websocket.Conn, msgType int) *WSConn {
+	return &WSConn{
 		conn:    conn,
 		msgType: msgType,
 		reader:  make(chan []byte),
 	}
 }
 
-func (ws *CWS) GetName() string {
-	return "CWS"
-}
-
-func (ws *CWS) GetReader() chan []byte {
+func (ws *WSConn) GetReader() chan []byte {
 	return ws.reader
 }
-func (ws *CWS) Connect(ctx context.Context, cancelFunc context.CancelFunc) {
-	// don't need to implement this, because we already
-	// initialized this structure with active connection.
-}
 
-func (ws *CWS) Start(ctx context.Context, cancel context.CancelFunc) {
+func (ws *WSConn) Consume(ctx context.Context) (err error) {
 	defer logrus.Debugln("gorounting wsConn.Start() ends")
 
 	// cannot set readDeadLine - https://github.com/gorilla/websocket/issues/474,
@@ -48,13 +41,12 @@ func (ws *CWS) Start(ctx context.Context, cancel context.CancelFunc) {
 			ws.reader <- message
 			continue
 		}
-		logrus.Errorln("Cannot read from ws conn", err)
-		cancel()
-		return
+		// TODO check if error is really an error, not just end of connection
+		return errors.New("Cannot read from ws conn: " + err.Error())
 	}
 }
 
-func (ws *CWS) Close() {
+func (ws *WSConn) Close() {
 	defer logrus.Debugln("wsConn.Close() ends")
 	if ws.conn == nil {
 		// if we closed session before even got the connection
@@ -70,9 +62,6 @@ func (ws *CWS) Close() {
 	close(ws.reader)
 }
 
-func (ws *CWS) Write(msg []byte) {
-	err := ws.conn.WriteMessage(ws.msgType, msg)
-	if err != nil {
-		logrus.Errorln("Could not write to ws connection", err, msg)
-	}
+func (ws *WSConn) Write(msg []byte) (err error) {
+	return ws.conn.WriteMessage(ws.msgType, msg)
 }

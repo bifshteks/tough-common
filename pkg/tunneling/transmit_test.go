@@ -2,11 +2,17 @@ package tunneling
 
 import (
 	"context"
+	"github.com/bifshteks/tough_common/pkg/tunneling/source"
 	"reflect"
 	"testing"
 	"time"
 )
 
+func TestSourceMockImplementsInterfaces(t *testing.T) {
+	mock := NewSourceMock([]string{}, false, false, 0)
+	var _ source.Source = mock
+	var _ source.NetworkSource = mock
+}
 func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 	cases := [][3]*SourceMock{
 		{

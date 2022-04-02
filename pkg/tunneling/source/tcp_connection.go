@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"errors"
 	"github.com/sirupsen/logrus"
 	"net"
 	"time"
@@ -19,16 +20,11 @@ func NewTCPConnection(conn net.Conn) *TCPConnection {
 	}
 }
 
-func (tcp *TCPConnection) GetName() string {
-	return "TCPConnection"
-}
-
 func (tcp *TCPConnection) GetReader() chan []byte {
 	return tcp.reader
 }
-func (tcp *TCPConnection) Connect(ctx context.Context, cancelFunc context.CancelFunc) {}
 
-func (tcp *TCPConnection) Start(ctx context.Context, cancel context.CancelFunc) {
+func (tcp *TCPConnection) Consume(ctx context.Context) (err error) {
 	defer logrus.Debugln("gorounting tcpConn.Start() ends")
 	logrus.Debugln("start tcpCOn")
 	for {
@@ -53,9 +49,8 @@ func (tcp *TCPConnection) Start(ctx context.Context, cancel context.CancelFunc) 
 			if isTimeout {
 				continue
 			}
-			logrus.Errorln("Cannot read from tcp conn", err)
-			cancel()
-			return
+			// todo check if it's really an error, not just end of connection
+			return errors.New("Cannot read from tcp conn: " + err.Error())
 		}
 	}
 }
@@ -70,9 +65,7 @@ func (tcp *TCPConnection) Close() {
 	close(tcp.reader)
 }
 
-func (tcp *TCPConnection) Write(msg []byte) {
-	_, err := tcp.conn.Write(msg)
-	if err != nil {
-		logrus.Errorln("Could not write to tcp connection", err, msg)
-	}
+func (tcp *TCPConnection) Write(msg []byte) (err error) {
+	_, err = tcp.conn.Write(msg)
+	return err
 }

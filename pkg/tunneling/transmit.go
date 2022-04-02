@@ -104,7 +104,7 @@ func (t *Transmitter) AddSources(sources ...source.Source) {
 func (t *Transmitter) read(source source.Source) {
 	readCtx, readCancel := context.WithCancel(context.Background())
 	go func() {
-		err := source.Consume(t.ctx, t.cancel)
+		err := source.Consume(t.ctx)
 		if err != nil {
 			t.cancel()
 		}

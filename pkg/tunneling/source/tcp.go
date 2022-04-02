@@ -55,7 +55,7 @@ func (tcp *TCP) Connect(ctx context.Context) error {
 	}
 }
 
-func (tcp *TCP) Start(ctx context.Context) error {
+func (tcp *TCP) Consume(ctx context.Context) error {
 	defer logrus.Debugln("tcp.Start() ends")
 	if tcp.conn == nil {
 		panic("try to start tcp source before connection is created")

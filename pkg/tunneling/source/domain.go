@@ -5,7 +5,7 @@ import "context"
 type Source interface {
 	// Consume starts process of reading from the
 	// source and writing the messages to the reader
-	Consume(ctx context.Context, cancel context.CancelFunc) (err error)
+	Consume(ctx context.Context) (err error)
 	// GetReader - get channel to retrieve messages from this source
 	GetReader() (reader chan []byte)
 	Write([]byte) (err error)
@@ -13,6 +13,6 @@ type Source interface {
 
 type NetworkSource interface {
 	Source
-	Connect(ctx context.Context, cancel context.CancelFunc) (err error)
+	Connect(ctx context.Context) (err error)
 	GetUrl() (url string)
 }
