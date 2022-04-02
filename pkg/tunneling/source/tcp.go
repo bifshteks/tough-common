@@ -2,7 +2,7 @@ package source
 
 import (
 	"context"
-	"gitlab.com/hi-it/tough-connect/tough_client/internal/logging"
+	"github.com/sirupsen/logrus"
 	"net"
 	"time"
 )
@@ -30,15 +30,15 @@ func (tcp *TCP) GetReader() chan []byte {
 }
 
 func (tcp *TCP) Connect(ctx context.Context) error {
-	logging.Logger.Debugln("tcp.Connect()")
+	logrus.Debugln("tcp.Connect()")
 	select {
 	case <-ctx.Done():
 		return nil
 	default:
-		logging.Logger.Infoln("Connecting to VNC on", tcp.url)
+		logrus.Infoln("Connecting to VNC on", tcp.url)
 		conn, err := net.DialTimeout("tcp", tcp.url, 3*time.Second)
 		if err != nil {
-			logging.Logger.Errorln("VNC dial failed:", err)
+			logrus.Errorln("VNC dial failed:", err)
 			return err
 		}
 		tcpConn, ok := conn.(*net.TCPConn)
@@ -46,7 +46,7 @@ func (tcp *TCP) Connect(ctx context.Context) error {
 			panic("cannot convert to tcpConn")
 		}
 		tcp.conn = tcpConn
-		logging.Logger.Infoln("Connected to vnc")
+		logrus.Infoln("Connected to vnc")
 		go func() {
 			<-ctx.Done()
 			tcp.Close()
@@ -56,15 +56,15 @@ func (tcp *TCP) Connect(ctx context.Context) error {
 }
 
 func (tcp *TCP) Start(ctx context.Context) error {
-	defer logging.Logger.Debugln("tcp.Start() ends")
+	defer logrus.Debugln("tcp.Start() ends")
 	if tcp.conn == nil {
 		panic("try to start tcp source before connection is created")
 	}
-	logging.Logger.Debugln("tcp.Start() call")
+	logrus.Debugln("tcp.Start() call")
 	for {
 		select {
 		case <-ctx.Done():
-			logging.Logger.Debugln("tcp.Start() ctx case")
+			logrus.Debugln("tcp.Start() ctx case")
 			return nil
 		default:
 			err := tcp.conn.SetReadDeadline(time.Now().Add(2 * time.Second))
@@ -82,7 +82,7 @@ func (tcp *TCP) Start(ctx context.Context) error {
 			if isTimeout {
 				continue
 			}
-			logging.Logger.Errorln("Could not read from tcp", err, n, string(buffer), ".", buffer[:10])
+			logrus.Errorln("Could not read from tcp", err, n, string(buffer), ".", buffer[:10])
 			return err
 		}
 	}
@@ -91,18 +91,18 @@ func (tcp *TCP) Start(ctx context.Context) error {
 func (tcp *TCP) Write(msg []byte) error {
 	_, err := tcp.conn.Write(msg)
 	if err != nil {
-		logging.Logger.Errorln("Cannot write to tcp", err)
+		logrus.Errorln("Cannot write to tcp", err)
 		return err
 	}
 	return nil
 }
 
 func (tcp *TCP) Close() {
-	defer logging.Logger.Debugln("tcp.Close() ends")
-	logging.Logger.Debugln("tcp.Close() call")
+	defer logrus.Debugln("tcp.Close() ends")
+	logrus.Debugln("tcp.Close() call")
 	err := tcp.conn.Close()
 	if err != nil {
-		logging.Logger.Errorln("Could not close connection to tcp:", err)
+		logrus.Errorln("Could not close connection to tcp:", err)
 		return
 	}
 	// waiting (with timeout) for the server to close the connection.
