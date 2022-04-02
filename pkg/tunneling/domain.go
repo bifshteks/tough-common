@@ -25,3 +25,6 @@ type Test interface {
 type Test2 interface {
 	Asd()
 }
+type Test3 interface {
+	Zxc()
+}
