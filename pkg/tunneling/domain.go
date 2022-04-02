@@ -11,6 +11,12 @@ type Source interface {
 	Write([]byte) (err error)
 }
 
+type NetworkSource interface {
+	Source
+	Connect(ctx context.Context) (err error)
+	GetUrl() (url string)
+}
+
 // ITransmitter is an object that is connected by any number of Sources,
 // that it reads and transmit messages from a sources to any other sources,
 // connected to Transmitter
