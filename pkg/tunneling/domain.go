@@ -22,3 +22,6 @@ type IPool interface {
 type Test interface {
 	Qwe()
 }
+type Test2 interface {
+	Asd()
+}
