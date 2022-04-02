@@ -18,13 +18,3 @@ type IPool interface {
 	Remove(src source.Source)
 	All() (sources []source.Source)
 }
-
-type Test interface {
-	Qwe()
-}
-type Test2 interface {
-	Asd()
-}
-type Test3 interface {
-	Zxc()
-}
