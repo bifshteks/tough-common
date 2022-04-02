@@ -70,6 +70,7 @@ func (ws *WS) Connect(ctx context.Context) (err error) {
 	}
 }
 
+// TODO does not stop on ctx cancel!!!!
 func (ws *WS) Consume(ctx context.Context) (err error) {
 	defer logrus.Debugln("ws.Start() ends")
 	logrus.Debugln("ws.Start() call")

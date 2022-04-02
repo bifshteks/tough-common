@@ -18,3 +18,7 @@ type IPool interface {
 	Remove(src source.Source)
 	All() (sources []source.Source)
 }
+
+type Test interface {
+	Qwe()
+}
