@@ -3,13 +3,11 @@ package tunneling
 import "context"
 
 type Source interface {
-	//GetName() string
-	//GetUrl() string
-	//Connect(ctx context.Context) (err error) // dial connection
-	// Start - start reading from instance
+	// Consume starts process of reading from the
+	// source and writing the messages to the reader
 	Consume(ctx context.Context) (err error)
 	// GetReader - get channel to retrieve messages from this source
-	GetReader() chan []byte
+	GetReader() (reader chan []byte)
 	Write([]byte) (err error)
 }
 
