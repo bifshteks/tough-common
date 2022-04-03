@@ -67,7 +67,7 @@ func TestTransmitterStopsWhenCannotStartSource(t *testing.T) {
 	case <-ctx.Done():
 		return
 	case <-time.After(time.Millisecond):
-		t.Errorf("transmitter did not stop after source exited .Start() method")
+		t.Errorf("transmitter did not stop after source exited .Consume() method")
 	}
 }
 

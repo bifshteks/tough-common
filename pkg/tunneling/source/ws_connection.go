@@ -28,7 +28,7 @@ func (ws *WSConn) GetReader() chan []byte {
 }
 
 func (ws *WSConn) Consume(ctx context.Context) (err error) {
-	defer ws.logger.Debugln("gorounting wsConn.Start() ends")
+	defer ws.logger.Debugln("gorounting wsConn.Consume() ends")
 
 	// cannot set readDeadLine - https://github.com/gorilla/websocket/issues/474,
 	// so use this goroutine

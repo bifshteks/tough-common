@@ -80,17 +80,15 @@ func (ws *WS) Connect(ctx context.Context) (err error) {
 }
 
 func (ws *WS) Consume(ctx context.Context) (err error) {
-	defer ws.logger.Debugln("ws.Start() ends")
-	ws.logger.Debugf("ws.Start() call %s", ws.url)
+	defer ws.logger.Debugln("ws.Consume() ends")
+	ws.logger.Debugf("ws.Consume() call %s", ws.url)
 
 	// don't need to catch context done - we already created a goroutine in .Connect() method
 	// waiting for that
 	for {
 		_, message, err := ws.conn.ReadMessage()
 		if err != nil {
-			closed := err == ErrNetClosing
-			ws.logger.Debugln("close error is use of blabla", closed, err)
-			if closed {
+			if IsClosedConnError(err) {
 				return nil
 			}
 			normalClosure := websocket.IsCloseError(err, websocket.CloseNormalClosure)

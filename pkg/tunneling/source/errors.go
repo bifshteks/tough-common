@@ -1,8 +1,8 @@
 package source
 
 import (
-	"errors"
 	"fmt"
+	"strings"
 )
 
 // FatalConnectError is used when connection cannot be established and there is no chance
@@ -20,4 +20,7 @@ func (fatalConnErr FatalConnectError) Error() string {
 	return fmt.Sprintf("fatal connect error: %s", fatalConnErr.Err)
 }
 
-var ErrNetClosing = errors.New("use of closed network connection")
+func IsClosedConnError(err error) bool {
+	str := err.Error()
+	return strings.Contains(str, "use of closed network connection")
+}

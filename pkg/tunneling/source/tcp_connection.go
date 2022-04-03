@@ -28,8 +28,8 @@ func (tcp *TCPConnection) GetReader() chan []byte {
 }
 
 func (tcp *TCPConnection) Consume(ctx context.Context) (err error) {
-	defer tcp.logger.Debugln("tcpConn.Start() ends")
-	tcp.logger.Debugln("start tcpCOn")
+	defer tcp.logger.Debugln("tcpConn.Consume() ends")
+	tcp.logger.Debugln("tcpCOn.Consume()")
 	for {
 		select {
 		case <-ctx.Done():

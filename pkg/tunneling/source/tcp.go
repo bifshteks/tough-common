@@ -56,8 +56,8 @@ func (tcp *TCP) Connect(ctx context.Context) error {
 }
 
 func (tcp *TCP) Consume(ctx context.Context) error {
-	defer tcp.logger.Debugln("tcp.Start() ends")
-	tcp.logger.Debugln("tcp.Start() call")
+	defer tcp.logger.Debugln("tcp.Consume() ends")
+	tcp.logger.Debugln("tcp.Consume() call")
 
 	// don't need to catch context done - we already created a goroutine in .Connect() method
 	// waiting for that
@@ -65,6 +65,9 @@ func (tcp *TCP) Consume(ctx context.Context) error {
 		buffer := make([]byte, 1024)
 		n, err := tcp.conn.Read(buffer)
 		if err != nil {
+			if IsClosedConnError(err) {
+				return nil
+			}
 			errMsg := fmt.Sprintf(
 				"Could not read from tcp on %s: %s", tcp.url, err,
 			)
