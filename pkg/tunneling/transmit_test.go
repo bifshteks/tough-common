@@ -3,7 +3,7 @@ package tunneling
 import (
 	"context"
 	"github.com/bifshteks/tough_common/pkg/tunneling/source"
-	"reflect"
+	requirement "github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
@@ -14,6 +14,7 @@ func TestSourceMockImplementsInterfaces(t *testing.T) {
 	var _ source.NetworkSource = mock
 }
 func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
+	require := requirement.New(t)
 	cases := [][3]*SourceMock{
 		{
 			NewSourceMock([]string{}, false, false, 0),
@@ -46,9 +47,7 @@ func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 					continue
 				}
 				for _, msg := range src.readMsgs {
-					if !s.gotMessage(msg) {
-						t.Errorf("source %d did not recieve msg from source %d", j, i)
-					}
+					require.True(s.gotMessage(msg), "source %d did not receive msg from source %d", j, i)
 				}
 			}
 		}
@@ -72,6 +71,7 @@ func TestTransmitterStopsWhenCannotStartSource(t *testing.T) {
 }
 
 func TestTransmitterCanAddSourcesWhileRunning(t *testing.T) {
+	require := requirement.New(t)
 	s1 := NewSourceMock([]string{}, false, false, 0)
 	s2 := NewSourceMock([]string{"asd"}, false, false, 0)
 	trans := NewTransmitter()
@@ -83,12 +83,11 @@ func TestTransmitterCanAddSourcesWhileRunning(t *testing.T) {
 	trans.AddSources(s2)
 	time.Sleep(time.Millisecond) // let trans write message
 
-	if !reflect.DeepEqual(s1.gotMsgs, s2.readMsgs) {
-		t.Errorf("transmitter did not send message from added in runtime source")
-	}
+	require.Equal(s1.gotMsgs, s2.readMsgs, "transmitter did not send message from added in runtime source")
 }
 
 func TestTransmitterStopsAfterContextCancel(t *testing.T) {
+	require := requirement.New(t)
 	trans := NewTransmitter()
 	ctx, cancel := context.WithCancel(context.Background())
 	stopped := false
@@ -99,17 +98,15 @@ func TestTransmitterStopsAfterContextCancel(t *testing.T) {
 	}()
 
 	time.Sleep(3 * time.Millisecond) // wait for trans to unexpectedly stop running
-	if stopped {
-		t.Errorf("trans stopped right after start")
-	}
+	require.False(stopped, "trans stopped right after start")
+
 	cancel()
 	time.Sleep(time.Millisecond) // let trans release and close things
-	if !stopped {
-		t.Errorf("trans did not stop after context canelation")
-	}
+	require.True(stopped, "trans did not stop after context cancelation")
 }
 
 func TestTransmitterRunEndsAfterSourcesStopConsuming(t *testing.T) {
+	require := requirement.New(t)
 	stopDelay := 100
 	s := NewSourceMock([]string{}, false, false, stopDelay)
 	trans := NewTransmitter()
@@ -122,7 +119,5 @@ func TestTransmitterRunEndsAfterSourcesStopConsuming(t *testing.T) {
 	}()
 	trans.Run(ctx, cancel)
 
-	if s.consuming {
-		t.Errorf("source still consuming after trans.Run() ends")
-	}
+	require.False(s.consuming, "source still consuming after trans.Run() ends")
 }
