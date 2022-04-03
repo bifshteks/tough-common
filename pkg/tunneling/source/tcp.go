@@ -13,13 +13,15 @@ type TCP struct {
 	url    string
 	conn   *net.TCPConn
 	reader chan []byte
+	logger *logrus.Logger
 }
 
-func NewTCP(url string) *TCP {
+func NewTCP(url string, logger *logrus.Logger) *TCP {
 	return &TCP{
 		url:    url,
 		conn:   nil,
 		reader: make(chan []byte),
+		logger: logger,
 	}
 }
 
@@ -32,8 +34,8 @@ func (tcp *TCP) GetReader() chan []byte {
 }
 
 func (tcp *TCP) Connect(ctx context.Context) error {
-	logrus.Debugf("tcp.Connect() on %s", tcp.url)
-	logrus.Infof("Connecting to tcp on %s", tcp.url)
+	tcp.logger.Debugf("tcp.Connect() on %s", tcp.url)
+	tcp.logger.Infof("Connecting to tcp on %s", tcp.url)
 	dialer := net.Dialer{Timeout: 5 * time.Second}
 	conn, err := dialer.DialContext(ctx, "tcp", tcp.url)
 	if err != nil {
@@ -45,7 +47,7 @@ func (tcp *TCP) Connect(ctx context.Context) error {
 		panic("cannot convert to tcpConn")
 	}
 	tcp.conn = tcpConn
-	logrus.Infof("Connected to tcp on %s", tcp.url)
+	tcp.logger.Infof("Connected to tcp on %s", tcp.url)
 	go func() {
 		<-ctx.Done()
 		tcp.Close()
@@ -54,8 +56,8 @@ func (tcp *TCP) Connect(ctx context.Context) error {
 }
 
 func (tcp *TCP) Consume(ctx context.Context) error {
-	defer logrus.Debugln("tcp.Start() ends")
-	logrus.Debugln("tcp.Start() call")
+	defer tcp.logger.Debugln("tcp.Start() ends")
+	tcp.logger.Debugln("tcp.Start() call")
 
 	// don't need to catch context done - we already created a goroutine in .Connect() method
 	// waiting for that
@@ -78,11 +80,11 @@ func (tcp *TCP) Write(msg []byte) error {
 }
 
 func (tcp *TCP) Close() {
-	defer logrus.Debugln("tcp.Close() ends")
-	logrus.Debugln("tcp.Close() call")
+	defer tcp.logger.Debugln("tcp.Close() ends")
+	tcp.logger.Debugln("tcp.Close() call")
 	err := tcp.conn.Close()
 	if err != nil {
-		logrus.Errorln("Could not close connection to tcp:", err)
+		tcp.logger.Errorln("Could not close connection to tcp:", err)
 	}
 	tcp.conn = nil
 	close(tcp.reader)

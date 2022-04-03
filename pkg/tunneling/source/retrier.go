@@ -18,10 +18,11 @@ type RetryPolicy struct {
 type Retrier struct {
 	NetworkSource
 	policy RetryPolicy
+	logger *logrus.Logger
 }
 
-func NewRetrier(source NetworkSource, policy RetryPolicy) *Retrier {
-	return &Retrier{NetworkSource: source, policy: policy}
+func NewRetrier(source NetworkSource, policy RetryPolicy, logger *logrus.Logger) *Retrier {
+	return &Retrier{NetworkSource: source, policy: policy, logger: logger}
 }
 
 func (retrier *Retrier) getTimeoutFunc() func() (next float64) {
@@ -51,7 +52,7 @@ func (retrier *Retrier) Connect(ctx context.Context) (err error) {
 		case <-ctx.Done():
 			return nil
 		default:
-			logrus.Debugf(
+			retrier.logger.Debugf(
 				"retrier connecting to source on %s, attempt %d/%s",
 				url, i+1, maxTriesStr)
 			err = retrier.NetworkSource.Connect(ctx)
@@ -63,10 +64,10 @@ func (retrier *Retrier) Connect(ctx context.Context) (err error) {
 			}
 			if err != nil {
 				if fatalErr, ok := err.(*FatalConnectError); ok {
-					logrus.Debugf("retrier error is fatal: %s", err)
+					retrier.logger.Debugf("retrier error is fatal: %s", err)
 					return fatalErr
 				}
-				logrus.Errorf("retrier connect to source on %s failed: %s", url, err)
+				retrier.logger.Errorf("retrier connect to source on %s failed: %s", url, err)
 				timeout := time.Duration(getTimeout())
 				time.Sleep(timeout * time.Second)
 				endlessRetry := retrier.policy.Tries == nil
@@ -99,7 +100,7 @@ func (retrier *Retrier) Start(sessionCtx context.Context) error {
 			default:
 			}
 			if err != nil {
-				logrus.Debugf("retier could not consume source on %s: %s", url, err.Error())
+				retrier.logger.Debugf("retier could not consume source on %s: %s", url, err.Error())
 				err = retrier.Connect(sessionCtx)
 				if err != nil {
 					return err

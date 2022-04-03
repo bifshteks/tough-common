@@ -11,13 +11,15 @@ type WSConn struct { // connection webSocket
 	conn    *websocket.Conn
 	reader  chan []byte
 	msgType int
+	logger  *logrus.Logger
 }
 
-func NewWSConn(conn *websocket.Conn, msgType int) *WSConn {
+func NewWSConn(conn *websocket.Conn, msgType int, logger *logrus.Logger) *WSConn {
 	return &WSConn{
 		conn:    conn,
 		msgType: msgType,
 		reader:  make(chan []byte),
+		logger:  logger,
 	}
 }
 
@@ -26,7 +28,7 @@ func (ws *WSConn) GetReader() chan []byte {
 }
 
 func (ws *WSConn) Consume(ctx context.Context) (err error) {
-	defer logrus.Debugln("gorounting wsConn.Start() ends")
+	defer ws.logger.Debugln("gorounting wsConn.Start() ends")
 
 	// cannot set readDeadLine - https://github.com/gorilla/websocket/issues/474,
 	// so use this goroutine
@@ -52,7 +54,7 @@ func (ws *WSConn) Write(msg []byte) (err error) {
 }
 
 func (ws *WSConn) Close() {
-	defer logrus.Debugln("wsConn.Close() ends")
+	defer ws.logger.Debugln("wsConn.Close() ends")
 	if ws.conn == nil {
 		// if we closed session before even got the connection
 		return

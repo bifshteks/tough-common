@@ -12,12 +12,14 @@ import (
 type TCPConnection struct {
 	conn   net.Conn
 	reader chan []byte
+	logger *logrus.Logger
 }
 
-func NewTCPConnection(conn net.Conn) *TCPConnection {
+func NewTCPConnection(conn net.Conn, logger *logrus.Logger) *TCPConnection {
 	return &TCPConnection{
 		conn:   conn,
 		reader: make(chan []byte),
+		logger: logger,
 	}
 }
 
@@ -26,8 +28,8 @@ func (tcp *TCPConnection) GetReader() chan []byte {
 }
 
 func (tcp *TCPConnection) Consume(ctx context.Context) (err error) {
-	defer logrus.Debugln("tcpConn.Start() ends")
-	logrus.Debugln("start tcpCOn")
+	defer tcp.logger.Debugln("tcpConn.Start() ends")
+	tcp.logger.Debugln("start tcpCOn")
 	for {
 		select {
 		case <-ctx.Done():
@@ -58,10 +60,10 @@ func (tcp *TCPConnection) Consume(ctx context.Context) (err error) {
 }
 
 func (tcp *TCPConnection) Close() {
-	defer logrus.Debugln("tcpConn.Close() ends")
+	defer tcp.logger.Debugln("tcpConn.Close() ends")
 	err := tcp.conn.Close()
 	if err != nil {
-		logrus.Errorln("Could not close connection to tcpConn:", err)
+		tcp.logger.Errorln("Could not close connection to tcpConn:", err)
 	}
 	tcp.conn = nil
 	close(tcp.reader)

@@ -19,22 +19,25 @@ type WS struct {
 	reader        chan []byte
 	msgType       int
 	requestHeader http.Header
+	logger        *logrus.Logger
 }
 
-func NewWS(url string, msgType int, requestHeader http.Header) *WS {
+func NewWS(url string, msgType int, requestHeader http.Header, logger *logrus.Logger) *WS {
 	return &WS{
 		url:           url,
 		conn:          nil,
 		reader:        make(chan []byte),
 		msgType:       msgType,
 		requestHeader: requestHeader,
+		logger:        logger,
 	}
 }
 
-func NewAuthorizedWS(url string, msgType int, headerName string, headerValue string) *WS {
-	return NewWS(url, msgType, http.Header{
+func NewAuthorizedWS(url string, msgType int, headerName string, headerValue string, logger *logrus.Logger) *WS {
+	header := http.Header{
 		headerName: []string{headerValue},
-	})
+	}
+	return NewWS(url, msgType, header, logger)
 }
 
 func (ws *WS) GetUrl() string {
@@ -46,8 +49,8 @@ func (ws *WS) GetReader() chan []byte {
 }
 
 func (ws *WS) Connect(ctx context.Context) (err error) {
-	defer logrus.Infof("ws.Connect() on %s end", ws.url)
-	logrus.Infof("ws.Connect() on %s", ws.url)
+	defer ws.logger.Infof("ws.Connect() on %s end", ws.url)
+	ws.logger.Infof("ws.Connect() on %s", ws.url)
 	// todo is dialContext closes connection as well on ctx expiration?
 	dialer := websocket.DefaultDialer
 	dialer.HandshakeTimeout = 10 * time.Second
@@ -66,7 +69,7 @@ func (ws *WS) Connect(ctx context.Context) (err error) {
 		return errors.New(errMsg)
 	}
 	ws.conn = conn
-	logrus.Infof("ws connected to %s", ws.url)
+	ws.logger.Infof("ws connected to %s", ws.url)
 	// cannot set readDeadLine - https://github.com/gorilla/websocket/issues/474,
 	// so use this goroutine
 	go func() {
@@ -77,8 +80,8 @@ func (ws *WS) Connect(ctx context.Context) (err error) {
 }
 
 func (ws *WS) Consume(ctx context.Context) (err error) {
-	defer logrus.Debugln("ws.Start() ends")
-	logrus.Debugf("ws.Start() call %s", ws.url)
+	defer ws.logger.Debugln("ws.Start() ends")
+	ws.logger.Debugf("ws.Start() call %s", ws.url)
 
 	// don't need to catch context done - we already created a goroutine in .Connect() method
 	// waiting for that
@@ -100,11 +103,11 @@ func (ws *WS) Write(msg []byte) error {
 }
 
 func (ws *WS) Close() {
-	defer logrus.Debugln("ws.Close() ends")
-	logrus.Debugf("ws.Close() call for ws on %s", ws.url)
+	defer ws.logger.Debugln("ws.Close() ends")
+	ws.logger.Debugf("ws.Close() call for ws on %s", ws.url)
 	err := ws.conn.Close()
 	if err != nil {
-		logrus.Errorf("Could not close ws on %s: %s", ws.url, err)
+		ws.logger.Errorf("Could not close ws on %s: %s", ws.url, err)
 	}
 	ws.conn = nil
 	close(ws.reader)
