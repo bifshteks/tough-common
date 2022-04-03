@@ -4,15 +4,35 @@ import (
 	"context"
 	"errors"
 	"github.com/sirupsen/logrus"
+	"math/rand"
 	"strconv"
 	"time"
 )
 
 type RetryPolicy struct {
-	Tries      *int
-	Delay      float64
-	MaxTimeout float64 // seconds, use math.Inf(1) if you don't want to have a limit
+	// Tries is max number of attempts that retrier will do before return error.
+	// If null - retrier will try to connect infinitely
+	Tries *int
+	// Delay is a number in seconds that used to increase the timeout between tries.
+	// (retrier uses arithmetical progression)
+	Delay float64
+	// MaxTimeout is a number in seconds that defines maximum delay between tries.
+	// Use math.Inf(1) if you don't want to have such limit
+	MaxTimeout float64
+	// JitterFunc is a function that returns a small divergent number by which
+	// each delay timeout is multiplied.
+	// It is used not to let DDOS manager server by a lot of simultaneous connections
+	// after manager restarts.
+	// Use
 	JitterFunc func() float64
+}
+
+// DefaultPolicy is a policy with all fields set to the default values
+var DefaultPolicy = &RetryPolicy{
+	Tries:      nil, // infinite tries limit
+	Delay:      1,   // increase delay by 1 each time
+	MaxTimeout: 60,  // don't let timeout be more than 60 sec
+	JitterFunc: rand.ExpFloat64,
 }
 
 type Retrier struct {
@@ -26,14 +46,14 @@ func NewRetrier(source NetworkSource, policy RetryPolicy, logger *logrus.Logger)
 }
 
 func (retrier *Retrier) getTimeoutFunc() func() (next float64) {
-	var i float64 = 0
+	var timeout float64 = 0
 	return func() (next float64) {
 		jitter := retrier.policy.JitterFunc()
-		i += retrier.policy.Delay * jitter
-		if i > retrier.policy.MaxTimeout {
+		timeout += retrier.policy.Delay * jitter
+		if timeout > retrier.policy.MaxTimeout {
 			return retrier.policy.MaxTimeout + 1*jitter
 		}
-		return i
+		return timeout
 	}
 }
 
@@ -67,6 +87,7 @@ func (retrier *Retrier) Connect(ctx context.Context) (err error) {
 					retrier.logger.Debugf("retrier error is fatal: %s", err)
 					return fatalErr
 				}
+				i++
 				retrier.logger.Errorf("retrier connect to source on %s failed: %s", url, err)
 				timeout := time.Duration(getTimeout())
 				time.Sleep(timeout * time.Second)
@@ -74,7 +95,6 @@ func (retrier *Retrier) Connect(ctx context.Context) (err error) {
 				if endlessRetry {
 					continue
 				}
-				i++
 				triesExceeded := i >= *retrier.policy.Tries
 				if triesExceeded {
 					return errors.New("max reconnect attempts exceeded")
