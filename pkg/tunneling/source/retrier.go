@@ -12,7 +12,7 @@ type RetryPolicy struct {
 	Tries      *int
 	Delay      float64
 	MaxTimeout float64 // seconds, use math.Inf(1) if you don't want to have a limit
-	jitterFunc func() float64
+	JitterFunc func() float64
 }
 
 type Retrier struct {
@@ -27,7 +27,7 @@ func NewRetrier(source NetworkSource, policy RetryPolicy) *Retrier {
 func (retrier *Retrier) getTimeoutFunc() func() (next float64) {
 	var i float64 = 0
 	return func() (next float64) {
-		jitter := retrier.policy.jitterFunc()
+		jitter := retrier.policy.JitterFunc()
 		i += retrier.policy.Delay * jitter
 		if i > retrier.policy.MaxTimeout {
 			return retrier.policy.MaxTimeout + 1*jitter
