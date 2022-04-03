@@ -56,7 +56,10 @@ func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 }
 
 func TestTransmitterStopsWhenCannotStartSource(t *testing.T) {
-	s := NewNormalSourceMock([]string{})
+	s := NewSourceMock(
+		[]string{},
+		true, false,
+		0)
 	trans := NewTransmitter(logutil.DummyLogger)
 	trans.AddSources(s)
 	ctx, cancel := context.WithCancel(context.Background())
