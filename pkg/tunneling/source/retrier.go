@@ -27,8 +27,8 @@ type RetryPolicy struct {
 	JitterFunc func() float64
 }
 
-// DefaultPolicy is a policy with all fields set to the default values
-var DefaultPolicy = &RetryPolicy{
+// DefaultRetryPolicy is a policy with all fields set to the default values
+var DefaultRetryPolicy = &RetryPolicy{
 	Tries:      nil, // infinite tries limit
 	Delay:      1,   // increase delay by 1 each time
 	MaxTimeout: 60,  // don't let timeout be more than 60 sec
