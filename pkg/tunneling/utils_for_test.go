@@ -31,6 +31,10 @@ func NewSourceMock(
 	}
 }
 
+func NewNormalSourceMock(readMsgs []string) *SourceMock {
+	return NewSourceMock(readMsgs, false, false, 0)
+}
+
 func (s *SourceMock) Consume(ctx context.Context) (err error) {
 	if s.failsConsumeBeforeMessages {
 		return errors.New("failed before")

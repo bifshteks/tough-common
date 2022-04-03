@@ -10,7 +10,7 @@ import (
 )
 
 func TestSourceMockImplementsInterfaces(t *testing.T) {
-	mock := NewSourceMock([]string{}, false, false, 0)
+	mock := NewNormalSourceMock([]string{})
 	var _ source.Source = mock
 	var _ source.NetworkSource = mock
 }
@@ -18,13 +18,13 @@ func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 	require := requirement.New(t)
 	cases := [][3]*SourceMock{
 		{
-			NewSourceMock([]string{}, false, false, 0),
-			NewSourceMock([]string{"asd", "qwe"}, false, false, 0),
-			NewSourceMock([]string{}, false, false, 0)},
+			NewNormalSourceMock([]string{}),
+			NewNormalSourceMock([]string{"asd", "qwe"}),
+			NewNormalSourceMock([]string{})},
 		{
-			NewSourceMock([]string{"a"}, false, false, 0),
-			NewSourceMock([]string{"b"}, false, false, 0),
-			NewSourceMock([]string{"c"}, false, false, 0),
+			NewNormalSourceMock([]string{"a"}),
+			NewNormalSourceMock([]string{"b"}),
+			NewNormalSourceMock([]string{"c"}),
 		},
 	}
 	for _, sources := range cases {
@@ -56,7 +56,7 @@ func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 }
 
 func TestTransmitterStopsWhenCannotStartSource(t *testing.T) {
-	s := NewSourceMock([]string{}, true, false, 0)
+	s := NewNormalSourceMock([]string{})
 	trans := NewTransmitter(logutil.DummyLogger)
 	trans.AddSources(s)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -73,8 +73,8 @@ func TestTransmitterStopsWhenCannotStartSource(t *testing.T) {
 
 func TestTransmitterCanAddSourcesWhileRunning(t *testing.T) {
 	require := requirement.New(t)
-	s1 := NewSourceMock([]string{}, false, false, 0)
-	s2 := NewSourceMock([]string{"asd"}, false, false, 0)
+	s1 := NewNormalSourceMock([]string{})
+	s2 := NewNormalSourceMock([]string{"asd"})
 	trans := NewTransmitter(logutil.DummyLogger)
 	ctx, cancel := context.WithCancel(context.Background())
 

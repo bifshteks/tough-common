@@ -51,7 +51,7 @@ func (ws *WS) GetReader() chan []byte {
 func (ws *WS) Connect(ctx context.Context) (err error) {
 	defer ws.logger.Infof("ws.Connect() on %s end", ws.url)
 	ws.logger.Infof("ws.Connect() on %s", ws.url)
-	// todo is dialContext closes connection as well on ctx expiration?
+	// todo does dialContext close connection on ctx expiration as well ?
 	dialer := websocket.DefaultDialer
 	dialer.HandshakeTimeout = 10 * time.Second
 	conn, resp, err := dialer.DialContext(ctx, ws.url, ws.requestHeader)
