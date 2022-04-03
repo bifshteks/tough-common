@@ -77,6 +77,7 @@ func (t *Transmitter) processSources(sources ...source.Source) {
 // Run starts reading from all currently added sources and writing their output
 // to other sources.
 func (t *Transmitter) Run(ctx context.Context, cancel context.CancelFunc) {
+	defer t.logger.Infoln("transmitter.Run() ends")
 	t.ctx = ctx
 	t.cancel = cancel
 	t.processSources(t.pool.All()...)
@@ -128,6 +129,7 @@ func (t *Transmitter) read(source source.Source) {
 }
 
 func (t *Transmitter) WriteToSources() {
+	defer t.logger.Info("transmitter.WriteToSources() ends")
 	for {
 		msg, more := <-t.messagesCh
 		if !more {
