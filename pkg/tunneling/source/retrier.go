@@ -4,32 +4,33 @@ import (
 	"context"
 	"errors"
 	"github.com/sirupsen/logrus"
+	"strconv"
 	"time"
 )
 
-type RetrierConfig struct {
+type RetryPolicy struct {
 	Tries      *int
 	Delay      float64
 	MaxTimeout float64 // seconds, use math.Inf(1) if you don't want to have a limit
-	JitterFunc func() float64
+	jitterFunc func() float64
 }
 
 type Retrier struct {
 	NetworkSource
-	cfg RetrierConfig
+	policy RetryPolicy
 }
 
-func NewRetrier(source NetworkSource, cfg RetrierConfig) *Retrier {
-	return &Retrier{NetworkSource: source, cfg: cfg}
+func NewRetrier(source NetworkSource, policy RetryPolicy) *Retrier {
+	return &Retrier{NetworkSource: source, policy: policy}
 }
 
 func (retrier *Retrier) getTimeoutFunc() func() (next float64) {
 	var i float64 = 0
 	return func() (next float64) {
-		jitter := retrier.cfg.JitterFunc()
-		i += retrier.cfg.Delay * jitter
-		if i > retrier.cfg.MaxTimeout {
-			return retrier.cfg.MaxTimeout + 1*jitter
+		jitter := retrier.policy.jitterFunc()
+		i += retrier.policy.Delay * jitter
+		if i > retrier.policy.MaxTimeout {
+			return retrier.policy.MaxTimeout + 1*jitter
 		}
 		return i
 	}
@@ -39,31 +40,45 @@ func (retrier *Retrier) Connect(ctx context.Context) (err error) {
 	i := 0
 	url := retrier.NetworkSource.GetUrl()
 	getTimeout := retrier.getTimeoutFunc()
+	var maxTriesStr string
+	if retrier.policy.Tries == nil {
+		maxTriesStr = "inf"
+	} else {
+		maxTriesStr = strconv.Itoa(*retrier.policy.Tries)
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
 			logrus.Debugf(
-				"connecting to ws on %s attempt %d/%d", url, i+1, retrier.cfg.Tries)
+				"retrier connecting to source on %s, attempt %d/%s",
+				url, i+1, maxTriesStr)
 			err = retrier.NetworkSource.Connect(ctx)
+			// handle case when err is "context expiration"
+			select {
+			case <-ctx.Done():
+				return nil
+			default:
+			}
 			if err != nil {
 				if fatalErr, ok := err.(*FatalConnectError); ok {
-					logrus.Debugln("retirer error is fatal", err)
+					logrus.Debugf("retrier error is fatal: %s", err)
 					return fatalErr
 				}
-				logrus.Errorln("connect to ws failed:", err)
-				time.Sleep(time.Duration(getTimeout()) * time.Second)
-				if retrier.cfg.Tries == nil {
+				logrus.Errorf("retrier connect to source on %s failed: %s", url, err)
+				timeout := time.Duration(getTimeout())
+				time.Sleep(timeout * time.Second)
+				endlessRetry := retrier.policy.Tries == nil
+				if endlessRetry {
 					continue
 				}
 				i++
-				exceeded := i >= *retrier.cfg.Tries
-				if exceeded {
+				triesExceeded := i >= *retrier.policy.Tries
+				if triesExceeded {
 					return errors.New("max reconnect attempts exceeded")
 				}
 			}
-			logrus.Debugf("connected to ws on %s", url)
 			return nil
 		}
 	}
@@ -78,15 +93,22 @@ func (retrier *Retrier) Start(sessionCtx context.Context) error {
 			return nil
 		default:
 			err := retrier.NetworkSource.Consume(sessionCtx)
-			if err == nil {
+			select {
+			case <-sessionCtx.Done():
 				return nil
+			default:
 			}
-			logrus.Debugf("could not read ws on %s", url)
-			err = retrier.Connect(sessionCtx)
 			if err != nil {
-				return err
+				logrus.Debugf("retier could not consume source on %s: %s", url, err.Error())
+				err = retrier.Connect(sessionCtx)
+				if err != nil {
+					return err
+				}
+				timeout := time.Duration(getTimeout())
+				time.Sleep(timeout * time.Second)
+				continue
 			}
-			time.Sleep(time.Duration(getTimeout()) * time.Second)
+			return nil
 		}
 	}
 }

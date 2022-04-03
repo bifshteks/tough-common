@@ -39,7 +39,8 @@ func (ws *WS) GetReader() chan []byte {
 }
 
 func (ws *WS) Connect(ctx context.Context) (err error) {
-	logrus.Debugf("ws.Connect() on %s", ws.url)
+	defer logrus.Infof("ws.Connect() on %s end", ws.url)
+	logrus.Infof("ws.Connect() on %s", ws.url)
 	// todo is dialContext closes connection as well on ctx expiration?
 	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, ws.url, ws.requestHeader)
 	if err != nil {
