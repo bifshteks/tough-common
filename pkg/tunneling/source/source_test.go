@@ -1,20 +1,20 @@
 package source
 
 import (
+	"github.com/bifshteks/tough_common/pkg/logutil"
 	"github.com/gorilla/websocket"
-	"github.com/sirupsen/logrus"
 	"testing"
 )
 
 func TestSourceStructsImplementInterfaces(t *testing.T) {
-	var _ Source = NewWSConn(nil, websocket.TextMessage, logrus.StandardLogger())
-	var _ Source = NewTCPConnection(nil, logrus.StandardLogger())
+	var _ Source = NewWSConn(nil, websocket.TextMessage, logutil.DummyLogger)
+	var _ Source = NewTCPConnection(nil, logutil.DummyLogger)
 
-	ws := NewWS("", websocket.TextMessage, nil, logrus.StandardLogger())
+	ws := NewWS("", websocket.TextMessage, nil, logutil.DummyLogger)
 	var _ Source = ws
 	var _ NetworkSource = ws
 
-	tcp := NewTCP("", logrus.StandardLogger())
+	tcp := NewTCP("", logutil.DummyLogger)
 	var _ Source = tcp
 	var _ NetworkSource = tcp
 }

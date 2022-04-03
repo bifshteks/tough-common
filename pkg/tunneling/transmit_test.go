@@ -2,8 +2,8 @@ package tunneling
 
 import (
 	"context"
+	"github.com/bifshteks/tough_common/pkg/logutil"
 	"github.com/bifshteks/tough_common/pkg/tunneling/source"
-	"github.com/sirupsen/logrus"
 	requirement "github.com/stretchr/testify/require"
 	"testing"
 	"time"
@@ -28,7 +28,7 @@ func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 		},
 	}
 	for _, sources := range cases {
-		trans := NewTransmitter(logrus.StandardLogger())
+		trans := NewTransmitter(logutil.DummyLogger)
 		trans.AddSources(sources[0], sources[1], sources[2])
 		ctx, cancel := context.WithCancel(context.Background())
 		testCtx, testCancel := context.WithCancel(context.Background())
@@ -57,7 +57,7 @@ func TestTransmitterSendsMessagesToEverySource(t *testing.T) {
 
 func TestTransmitterStopsWhenCannotStartSource(t *testing.T) {
 	s := NewSourceMock([]string{}, true, false, 0)
-	trans := NewTransmitter(logrus.StandardLogger())
+	trans := NewTransmitter(logutil.DummyLogger)
 	trans.AddSources(s)
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -75,7 +75,7 @@ func TestTransmitterCanAddSourcesWhileRunning(t *testing.T) {
 	require := requirement.New(t)
 	s1 := NewSourceMock([]string{}, false, false, 0)
 	s2 := NewSourceMock([]string{"asd"}, false, false, 0)
-	trans := NewTransmitter(logrus.StandardLogger())
+	trans := NewTransmitter(logutil.DummyLogger)
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go trans.Run(ctx, cancel)
@@ -89,7 +89,7 @@ func TestTransmitterCanAddSourcesWhileRunning(t *testing.T) {
 
 func TestTransmitterStopsAfterContextCancel(t *testing.T) {
 	require := requirement.New(t)
-	trans := NewTransmitter(logrus.StandardLogger())
+	trans := NewTransmitter(logutil.DummyLogger)
 	ctx, cancel := context.WithCancel(context.Background())
 	stopped := false
 
@@ -113,7 +113,7 @@ func TestTransmitterRunEndsAfterSourcesStopConsuming(t *testing.T) {
 		[]string{},
 		false, false,
 		stopDelay)
-	trans := NewTransmitter(logrus.StandardLogger())
+	trans := NewTransmitter(logutil.DummyLogger)
 	ctx, cancel := context.WithCancel(context.Background())
 	trans.AddSources(s)
 
