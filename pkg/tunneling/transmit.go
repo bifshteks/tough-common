@@ -104,21 +104,20 @@ func (t *Transmitter) AddSources(sources ...source.Source) {
 }
 
 func (t *Transmitter) read(source source.Source) {
-	readCtx, readCancel := context.WithCancel(context.Background())
+	defer t.logger.Infof("transmitter.read() ends")
 	go func() {
 		err := source.Consume(t.ctx)
 		if err != nil {
 			t.logger.Errorf("source had error consuming: %s", err.Error())
-			t.cancel()
 		}
-		readCancel() // stop reading for-loop processing current source
+		t.cancel()
 	}()
 	reader := source.GetReader()
 	for {
 		select {
 		case msg := <-reader:
 			t.messagesCh <- Message{content: msg, author: source}
-		case <-readCtx.Done():
+		case <-t.ctx.Done():
 			t.pool.Remove(source)
 			t.wg.Done() // must bt strictly in this case block, call only after .Consume() ends
 			return
