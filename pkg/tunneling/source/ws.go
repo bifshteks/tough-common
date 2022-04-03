@@ -30,6 +30,12 @@ func NewWS(url string, msgType int, requestHeader http.Header) *WS {
 	}
 }
 
+func NewAuthorizedWS(url string, msgType int, headerName string, headerValue string) *WS {
+	return NewWS(url, msgType, http.Header{
+		headerName: []string{headerValue},
+	})
+}
+
 func (ws *WS) GetUrl() string {
 	return ws.url
 }
