@@ -3,6 +3,7 @@ package tunneling
 import (
 	"context"
 	"github.com/bifshteks/tough_common/pkg/tunneling/source"
+	"github.com/sirupsen/logrus"
 	"sync"
 )
 
@@ -53,14 +54,16 @@ type Transmitter struct {
 	ctx        context.Context
 	cancel     context.CancelFunc
 	messagesCh chan Message
+	logger     *logrus.Logger
 }
 
-func NewTransmitter() *Transmitter {
+func NewTransmitter(logger *logrus.Logger) *Transmitter {
 	return &Transmitter{
 		pool: &Pool{
 			sources: make([]source.Source, 0),
 		},
 		messagesCh: make(chan Message),
+		logger:     logger,
 	}
 }
 
@@ -106,6 +109,7 @@ func (t *Transmitter) read(source source.Source) {
 	go func() {
 		err := source.Consume(t.ctx)
 		if err != nil {
+			t.logger.Errorf("source %s had error consuming: %s", source, err.Error())
 			t.cancel()
 		}
 		t.pool.Remove(source)
