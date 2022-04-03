@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"net/http"
+	"time"
 )
 
 type WSDialer interface {
@@ -48,7 +49,9 @@ func (ws *WS) Connect(ctx context.Context) (err error) {
 	defer logrus.Infof("ws.Connect() on %s end", ws.url)
 	logrus.Infof("ws.Connect() on %s", ws.url)
 	// todo is dialContext closes connection as well on ctx expiration?
-	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, ws.url, ws.requestHeader)
+	dialer := websocket.DefaultDialer
+	dialer.HandshakeTimeout = 10 * time.Second
+	conn, resp, err := dialer.DialContext(ctx, ws.url, ws.requestHeader)
 	if err != nil {
 		fatalResponseError := resp != nil && (resp.StatusCode == http.StatusBadRequest ||
 			resp.StatusCode == http.StatusUnauthorized)
