@@ -76,7 +76,6 @@ func (t *Transmitter) processSources(sources ...source.Source) {
 
 // Run starts reading from all currently added sources and writing their output
 // to other sources.
-// If source returns error on source.Start() - calls context's cancel function
 func (t *Transmitter) Run(ctx context.Context, cancel context.CancelFunc) {
 	t.ctx = ctx
 	t.cancel = cancel
@@ -109,12 +108,10 @@ func (t *Transmitter) read(source source.Source) {
 	go func() {
 		err := source.Consume(t.ctx)
 		if err != nil {
-			t.logger.Errorf("source %s had error consuming: %s", source, err.Error())
+			t.logger.Errorf("source had error consuming: %s", err.Error())
 			t.cancel()
 		}
-		t.pool.Remove(source)
 		readCancel() // stop reading for-loop processing current source
-		t.wg.Done()  // call only after .Start() ends
 	}()
 	reader := source.GetReader()
 	for {
@@ -122,6 +119,8 @@ func (t *Transmitter) read(source source.Source) {
 		case msg := <-reader:
 			t.messagesCh <- Message{content: msg, author: source}
 		case <-readCtx.Done():
+			t.pool.Remove(source)
+			t.wg.Done() // call only after .Consume() ends
 			return
 		}
 	}
