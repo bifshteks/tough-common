@@ -120,7 +120,7 @@ func (t *Transmitter) read(source source.Source) {
 			t.messagesCh <- Message{content: msg, author: source}
 		case <-readCtx.Done():
 			t.pool.Remove(source)
-			t.wg.Done() // call only after .Consume() ends
+			t.wg.Done() // must bt strictly in this case block, call only after .Consume() ends
 			return
 		}
 	}

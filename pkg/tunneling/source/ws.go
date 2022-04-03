@@ -88,6 +88,11 @@ func (ws *WS) Consume(ctx context.Context) (err error) {
 	for {
 		_, message, err := ws.conn.ReadMessage()
 		if err != nil {
+			closed := err == ErrNetClosing
+			ws.logger.Debugln("close error is use of blabla", closed, err)
+			if closed {
+				return nil
+			}
 			normalClosure := websocket.IsCloseError(err, websocket.CloseNormalClosure)
 			if normalClosure {
 				return nil

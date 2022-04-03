@@ -1,6 +1,9 @@
 package source
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 // FatalConnectError is used when connection cannot be established and there is no chance
 // that it will change (in other words the error is not temporary, so there is no need
@@ -16,3 +19,5 @@ func NewFatalConnectError(err error) *FatalConnectError {
 func (fatalConnErr FatalConnectError) Error() string {
 	return fmt.Sprintf("fatal connect error: %s", fatalConnErr.Err)
 }
+
+var ErrNetClosing = errors.New("use of closed network connection")
