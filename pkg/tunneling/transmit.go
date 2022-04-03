@@ -84,8 +84,6 @@ func (t *Transmitter) Run(ctx context.Context, cancel context.CancelFunc) {
 
 	<-ctx.Done()
 	t.wg.Wait()
-	t.ctx = nil
-	t.cancel = nil
 	close(t.messagesCh) // after waited for every source to finish - close channel to stop Write goroutine
 }
 
