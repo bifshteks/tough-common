@@ -33,28 +33,24 @@ func (tcp *TCP) GetReader() chan []byte {
 
 func (tcp *TCP) Connect(ctx context.Context) error {
 	logrus.Debugf("tcp.Connect() on %s", tcp.url)
-	select {
-	case <-ctx.Done():
-		return nil
-	default:
-		logrus.Infof("Connecting to VNC on %s", tcp.url)
-		conn, err := net.DialTimeout("tcp", tcp.url, 3*time.Second)
-		if err != nil {
-			logrus.Errorln("VNC dial failed:", err)
-			return err
-		}
-		tcpConn, ok := conn.(*net.TCPConn)
-		if !ok {
-			panic("cannot convert to tcpConn")
-		}
-		tcp.conn = tcpConn
-		logrus.Infof("Connected to vnc on %s", tcp.url)
-		go func() {
-			<-ctx.Done()
-			tcp.Close()
-		}()
-		return nil
+	logrus.Infof("Connecting to tcp on %s", tcp.url)
+	dialer := net.Dialer{Timeout: 5 * time.Second}
+	conn, err := dialer.DialContext(ctx, "tcp", tcp.url)
+	if err != nil {
+		errMsg := fmt.Sprintf("tcp dial failed: %s", err.Error())
+		return NewFatalConnectError(errors.New(errMsg))
 	}
+	tcpConn, ok := conn.(*net.TCPConn)
+	if !ok {
+		panic("cannot convert to tcpConn")
+	}
+	tcp.conn = tcpConn
+	logrus.Infof("Connected to tcp on %s", tcp.url)
+	go func() {
+		<-ctx.Done()
+		tcp.Close()
+	}()
+	return nil
 }
 
 func (tcp *TCP) Consume(ctx context.Context) error {
@@ -67,14 +63,10 @@ func (tcp *TCP) Consume(ctx context.Context) error {
 		buffer := make([]byte, 1024)
 		n, err := tcp.conn.Read(buffer)
 		if err != nil {
-			netErr, ok := err.(net.Error)
-			temporary := ok && netErr.Temporary()
-			if temporary {
-				continue
-			}
-			return errors.New(fmt.Sprintf(
+			errMsg := fmt.Sprintf(
 				"Could not read from tcp on %s: %s", tcp.url, err,
-			))
+			)
+			return errors.New(errMsg)
 		}
 		tcp.reader <- buffer[:n]
 	}

@@ -9,6 +9,9 @@ import (
 	"net/http"
 )
 
+type WSDialer interface {
+	DialContext(ctx context.Context, url string, requestHeader http.Header)
+}
 type WS struct {
 	url           string
 	conn          *websocket.Conn
@@ -37,36 +40,30 @@ func (ws *WS) GetReader() chan []byte {
 
 func (ws *WS) Connect(ctx context.Context) (err error) {
 	logrus.Debugf("ws.Connect() on %s", ws.url)
-	select {
-	case <-ctx.Done():
-		return nil
-	default:
-		conn, resp, err := websocket.DefaultDialer.DialContext(ctx, ws.url, ws.requestHeader)
-		if resp != nil {
-			responseWithKnownBadStatus := resp.StatusCode == http.StatusBadRequest ||
-				resp.StatusCode == http.StatusUnauthorized
-			if responseWithKnownBadStatus {
-				return errors.New(
-					fmt.Sprintf(
-						"ws connection cannot connect to %s, response status is %d",
-						ws.url, resp.StatusCode,
-					),
-				)
-			}
+	// todo is dialContext closes connection as well on ctx expiration?
+	conn, resp, err := websocket.DefaultDialer.DialContext(ctx, ws.url, ws.requestHeader)
+	if err != nil {
+		fatalResponseError := resp != nil && (resp.StatusCode == http.StatusBadRequest ||
+			resp.StatusCode == http.StatusUnauthorized)
+		if fatalResponseError {
+			errMsg := fmt.Sprintf(
+				"ws connection cannot connect to %s, response status is %d",
+				ws.url, resp.StatusCode,
+			)
+			return NewFatalConnectError(errors.New(errMsg))
 		}
-		if err != nil {
-			return errors.New(fmt.Sprintf("Cannot connect to ws %s: %s", ws.url, err))
-		}
-		ws.conn = conn
-		logrus.Infof("ws connected to %s", ws.url)
-		// cannot set readDeadLine - https://github.com/gorilla/websocket/issues/474,
-		// so use this goroutine
-		go func() {
-			<-ctx.Done()
-			ws.Close()
-		}()
-		return nil
+		errMsg := fmt.Sprintf("Cannot connect to ws %s: %s", ws.url, err)
+		return errors.New(errMsg)
 	}
+	ws.conn = conn
+	logrus.Infof("ws connected to %s", ws.url)
+	// cannot set readDeadLine - https://github.com/gorilla/websocket/issues/474,
+	// so use this goroutine
+	go func() {
+		<-ctx.Done()
+		ws.Close()
+	}()
+	return nil
 }
 
 func (ws *WS) Consume(ctx context.Context) (err error) {
