@@ -103,11 +103,14 @@ func (t *Transmitter) AddSources(sources ...source.Source) {
 
 func (t *Transmitter) read(source source.Source) {
 	defer t.logger.Infof("transmitter.read() ends")
+	var sourceReadWg sync.WaitGroup
+	sourceReadWg.Add(1)
 	go func() {
 		err := source.Consume(t.ctx)
 		if err != nil {
 			t.logger.Errorf("source had error consuming: %s", err.Error())
 		}
+		sourceReadWg.Done()
 		t.cancel()
 	}()
 	reader := source.GetReader()
@@ -116,8 +119,9 @@ func (t *Transmitter) read(source source.Source) {
 		case msg := <-reader:
 			t.messagesCh <- Message{content: msg, author: source}
 		case <-t.ctx.Done():
+			sourceReadWg.Wait()
 			t.pool.Remove(source)
-			t.wg.Done() // must bt strictly in this case block, call only after .Consume() ends
+			t.wg.Done()
 			return
 		}
 	}

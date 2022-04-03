@@ -109,7 +109,10 @@ func TestTransmitterStopsAfterContextCancel(t *testing.T) {
 func TestTransmitterRunEndsAfterSourcesStopConsuming(t *testing.T) {
 	require := requirement.New(t)
 	stopDelay := 100
-	s := NewSourceMock([]string{}, false, false, stopDelay)
+	s := NewSourceMock(
+		[]string{},
+		false, false,
+		stopDelay)
 	trans := NewTransmitter(logrus.StandardLogger())
 	ctx, cancel := context.WithCancel(context.Background())
 	trans.AddSources(s)
