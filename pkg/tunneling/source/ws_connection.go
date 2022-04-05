@@ -63,8 +63,7 @@ func (ws *WSConn) Close() {
 		websocket.CloseMessage,
 		websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 
-	// waiting (with timeout) for the server to close the connection.
-	<-time.After(time.Second)
+	<-time.After(time.Millisecond)
 	_ = ws.conn.Close()
 	ws.conn = nil
 	close(ws.reader)
