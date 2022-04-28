@@ -103,6 +103,7 @@ func (t *Transmitter) AddSources(sources ...source.Source) {
 }
 
 func (t *Transmitter) read(source source.Source) {
+	t.logger.Debugln("transfmitter.read start", source, "ctx = ", t.ctx)
 	defer t.logger.Infof("transmitter.read() ends")
 	var sourceReadWg sync.WaitGroup
 	sourceReadWg.Add(1)
